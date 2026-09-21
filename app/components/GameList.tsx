@@ -59,11 +59,13 @@ export default function GameList({ games }: { games: Game[] }) {
                         </button>
                     </div>
                     <div className="flex-1 w-full bg-black relative">
-                        {/* FIX: Removed leading slash before emulator.html */}
                         <iframe
                             src={`emulator.html?core=${playing.system}&rom=${encodeURIComponent(playing.romUrl)}`}
-                            className="absolute inset-0 w-full h-full border-none"
-                            allow="gamepad; autoplay; fullscreen"
+                            className="absolute inset-0 w-full h-full border-none block"
+                            /* FIX: Removed 'autoplay' so iOS doesn't crash the WASM thread during audio init */
+                            allow="gamepad; fullscreen"
+                            /* FIX: Force Safari to respect dimensions */
+                            scrolling="no"
                         ></iframe>
                     </div>
                 </div>

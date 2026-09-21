@@ -2,10 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Romacking Emulator</title>
+    <!-- viewport-fit=cover and strict scaling limits are crucial for iOS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Emulator</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%; 
+            background: #000; overflow: hidden; 
+            /* Stop iOS Safari from attempting to "bounce" scroll the iframe */
+            overscroll-behavior: none; 
+            -webkit-overflow-scrolling: touch;
+        }
         #game { width: 100%; height: 100%; }
     </style>
 </head>
@@ -15,9 +23,16 @@
         const urlParams = new URLSearchParams(window.location.search);
         
         window.EJS_player = '#game';
-        window.EJS_core = urlParams.get('core'); // 'nes', 'gb', 'gbc', or 'gba'
-        window.EJS_gameUrl = urlParams.get('rom'); // Path to ROM
+        window.EJS_core = urlParams.get('core'); 
+        
+        // FIX: Force Safari to resolve the exact absolute path of the ROM
+        const relativeRom = urlParams.get('rom');
+        window.EJS_gameUrl = new URL(relativeRom, window.location.href).href;
+        
         window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+        
+        // FIX: Force the emulator to wait for an explicit tap on iOS to prevent WebAudio crashes
+        window.EJS_startOnLoaded = false;
     </script>
     <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 </body>
