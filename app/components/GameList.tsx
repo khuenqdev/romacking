@@ -60,11 +60,10 @@ export default function GameList({ games }: { games: Game[] }) {
                     </div>
                     <div className="flex-1 w-full bg-black relative">
                         <iframe
-                            src={`emulator.html?core=${playing.system}&rom=${encodeURIComponent(playing.romUrl)}`}
+                            /* FIX: Added Date.now() to bypass Safari's aggressive caching */
+                            src={`emulator.html?core=${playing.system}&rom=${encodeURIComponent(playing.romUrl)}&t=${Date.now()}`}
                             className="absolute inset-0 w-full h-full border-none block"
-                            /* FIX: Removed 'autoplay' so iOS doesn't crash the WASM thread during audio init */
                             allow="gamepad; fullscreen"
-                            /* FIX: Force Safari to respect dimensions */
                             scrolling="no"
                         ></iframe>
                     </div>
