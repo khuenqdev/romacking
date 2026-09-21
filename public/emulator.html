@@ -14,6 +14,24 @@
         }
         #game { width: 100%; height: 100%; }
         
+        /* ---------------------------------------------------
+           CUSTOM THEME INJECTION: NEON GLASSMORPHISM
+           EmulatorJS dynamically injects its virtual gamepad. 
+           We target its SVGs and touch areas globally. 
+        --------------------------------------------------- */
+        
+        /* Add a soft purple neon glow to all on-screen control SVGs */
+        #game svg {
+            filter: drop-shadow(0px 0px 8px rgba(147, 51, 234, 0.6));
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* When a button is touched, make it glow brighter */
+        #game svg:active {
+            filter: drop-shadow(0px 0px 15px rgba(147, 51, 234, 1));
+            transform: scale(0.95);
+        }
+
         #debug-log {
             display: none;
             position: absolute;
@@ -29,7 +47,6 @@
             word-break: break-all;
         }
     </style>
-    <!-- Eruda Mobile DevTools for live debugging on iOS -->
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
 </head>
 <body>
@@ -37,7 +54,6 @@
     <div id="game"></div>
 
     <script>
-        // Only load the mobile console icon on iOS devices
         if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
             eruda.init();
         }
@@ -52,14 +68,11 @@
             showError(`Runtime Error:\n${msg}\nLine: ${line}\nSource: ${url}`);
         };
 
-        // Resume AudioContext on first iOS user touch
         const unlockAudio = () => {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (AudioCtx) {
                 const ctx = new AudioCtx();
-                if (ctx.state === 'suspended') {
-                    ctx.resume();
-                }
+                if (ctx.state === 'suspended') ctx.resume();
             }
         };
         window.addEventListener('touchstart', unlockAudio, { once: true });
@@ -71,49 +84,48 @@
             const relativeRom = urlParams.get('rom');
 
             if (!relativeRom) {
-                showError("Configuration Error: No ROM path specified in URL parameters.");
+                showError("Configuration Error: No ROM path specified.");
                 return;
             }
 
-            // Calculate absolute HTTPS URL
             const resolvedRomUrl = new URL(relativeRom, window.location.href).href;
 
             try {
-                // 1. Verify ROM is reachable
                 const res = await fetch(resolvedRomUrl);
                 if (!res.ok) {
-                    showError(`[HTTP ${res.status}] Failed to fetch ROM from:\n${resolvedRomUrl}`);
+                    showError(`[HTTP ${res.status}] Failed to fetch ROM.`);
                     return;
                 }
 
-                // 2. Verify payload is not an HTML 404 page
                 const blob = await res.blob();
                 if (blob.size < 300) {
                     const sample = await blob.text();
                     if (sample.includes("<!DOCTYPE") || sample.includes("<html")) {
-                        showError(`Error: Server returned an HTML 404 page instead of a ROM.\nURL: ${resolvedRomUrl}`);
+                        showError(`Error: Server returned an HTML page instead of a ROM.`);
                         return;
                     }
                 }
 
-                // 3. Configure EmulatorJS
                 window.EJS_player = '#game';
                 window.EJS_core = core;
-                
-                // FIX: Pass the real HTTPS URL directly so Web Workers on iOS can fetch it
                 window.EJS_gameUrl = resolvedRomUrl;
-                
                 window.EJS_gameName = relativeRom.split('/').pop().split('.')[0];
                 window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
                 window.EJS_startOnLoaded = true;
 
-                // 4. Mount loader
+                // ---------------------------------------------------
+                // EMULATORJS NATIVE UI SETTINGS
+                // ---------------------------------------------------
+                window.EJS_color = '#9333ea';             // Accent color (Tailwind purple-600)
+                window.EJS_backgroundColor = '#111827';   // Loading screen color (Tailwind gray-900)
+                window.EJS_alignStartButton = 'center';   // Moves the "Play" button to the exact center
+
                 const script = document.createElement('script');
                 script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
                 document.body.appendChild(script);
 
             } catch (err) {
-                showError(`Network/CORS Error:\n${err.message}\n\nTarget: ${resolvedRomUrl}`);
+                showError(`Network/CORS Error:\n${err.message}`);
             }
         }
 
