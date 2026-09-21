@@ -59,8 +59,9 @@ export default function GameList({ games }: { games: Game[] }) {
                         </button>
                     </div>
                     <div className="flex-1 w-full bg-black relative">
+                        {/* FIX: Removed leading slash before emulator.html */}
                         <iframe
-                            src={`${basePath}/emulator.html?core=${playing.system}&rom=${encodeURIComponent(playing.romUrl)}`}
+                            src={`emulator.html?core=${playing.system}&rom=${encodeURIComponent(playing.romUrl)}`}
                             className="absolute inset-0 w-full h-full border-none"
                             allow="gamepad; autoplay; fullscreen"
                         ></iframe>

@@ -47,14 +47,16 @@ export function getGames(): Game[] {
                     });
 
                     if (matchingImg) {
-                        coverUrl = `${basePath}/roms/${system}/${matchingImg}`; // Updated
+                        // FIX: Removed leading slash so it becomes a relative path
+                        coverUrl = `roms/${system}/${matchingImg}`;
                     }
 
                     games.push({
                         id: `${system}-${baseName}`,
                         title,
                         system,
-                        romUrl: `${basePath}/roms/${system}/${file}`, // Updated
+                        // FIX: Removed leading slash so it becomes a relative path
+                        romUrl: `roms/${system}/${file}`,
                         coverUrl,
                     });
                 }
