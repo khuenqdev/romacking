@@ -60,10 +60,10 @@ export default function GameList({ games }: { games: Game[] }) {
                     </div>
                     <div className="flex-1 w-full bg-black relative">
                         <iframe
-                            /* FIX: Added Date.now() to bypass Safari's aggressive caching */
+                            /* The Date.now() ensures your phone doesn't cache the old, broken version */
                             src={`emulator.html?core=${playing.system}&rom=${encodeURIComponent(playing.romUrl)}&t=${Date.now()}`}
                             className="absolute inset-0 w-full h-full border-none block"
-                            allow="gamepad; fullscreen"
+                            allow="gamepad; autoplay; fullscreen"
                             scrolling="no"
                         ></iframe>
                     </div>
