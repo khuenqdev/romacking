@@ -15,21 +15,58 @@
         #game { width: 100%; height: 100%; }
         
         /* ---------------------------------------------------
-           CUSTOM THEME INJECTION: NEON GLASSMORPHISM
-           EmulatorJS dynamically injects its virtual gamepad. 
-           We target its SVGs and touch areas globally. 
+           NEON GLASSMORPHISM THEME (CSS OVERRIDES)
         --------------------------------------------------- */
         
-        /* Add a soft purple neon glow to all on-screen control SVGs */
-        #game svg {
-            filter: drop-shadow(0px 0px 8px rgba(147, 51, 234, 0.6));
-            transition: all 0.2s ease-in-out;
+        /* 1. Base style for all text buttons (A, B, Start, Select) */
+        .ejs_virtualGamepad_button {
+            background: rgba(147, 51, 234, 0.15) !important;
+            border: 2px solid rgba(147, 51, 234, 0.6) !important;
+            color: #e9d5ff !important; /* Tailwind purple-200 */
+            box-shadow: 0 0 12px rgba(147, 51, 234, 0.4), inset 0 0 8px rgba(147, 51, 234, 0.2) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important; /* iOS support */
+            transition: all 0.1s ease !important;
+            text-shadow: 0 0 5px rgba(147, 51, 234, 0.8) !important;
+            /* Disable text selection on touch */
+            user-select: none !important;
+            -webkit-user-select: none !important;
         }
-        
-        /* When a button is touched, make it glow brighter */
-        #game svg:active {
-            filter: drop-shadow(0px 0px 15px rgba(147, 51, 234, 1));
-            transform: scale(0.95);
+
+        /* 2. Active (Touched) state for buttons */
+        .ejs_virtualGamepad_button:active {
+            background: rgba(147, 51, 234, 0.5) !important;
+            box-shadow: 0 0 20px rgba(147, 51, 234, 1), inset 0 0 15px rgba(147, 51, 234, 0.6) !important;
+            transform: scale(0.9) !important;
+        }
+
+        /* 3. Make A, B, X, Y buttons perfectly circular */
+        .b_a, .b_b, .b_x, .b_y {
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* 4. Make Start/Select look like modern pills */
+        .b_start, .b_select, .b_speed_fast, .b_speed_slow {
+            border-radius: 20px !important;
+        }
+
+        /* 5. D-Pad Styling */
+        .ejs_dpad_bar {
+            background: rgba(147, 51, 234, 0.2) !important;
+            border: 2px solid rgba(147, 51, 234, 0.6) !important;
+            box-shadow: 0 0 12px rgba(147, 51, 234, 0.4) !important;
+            border-radius: 8px !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+        }
+
+        /* 6. Settings/Menu SVG Icon */
+        .ejs_virtualGamepad_open svg {
+            fill: #d8b4fe !important;
+            filter: drop-shadow(0px 0px 8px rgba(147, 51, 234, 0.8)) !important;
         }
 
         #debug-log {
@@ -47,7 +84,8 @@
             word-break: break-all;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <!-- Kept eruda for iOS debugging just in case -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/eruda"></script> -->
 </head>
 <body>
     <div id="debug-log"></div>
@@ -113,12 +151,10 @@
                 window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
                 window.EJS_startOnLoaded = true;
 
-                // ---------------------------------------------------
-                // EMULATORJS NATIVE UI SETTINGS
-                // ---------------------------------------------------
-                window.EJS_color = '#9333ea';             // Accent color (Tailwind purple-600)
-                window.EJS_backgroundColor = '#111827';   // Loading screen color (Tailwind gray-900)
-                window.EJS_alignStartButton = 'center';   // Moves the "Play" button to the exact center
+                // EmualtorJS UI Config
+                window.EJS_color = '#9333ea';
+                window.EJS_backgroundColor = '#111827';
+                window.EJS_alignStartButton = 'center';
 
                 const script = document.createElement('script');
                 script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
