@@ -9,30 +9,99 @@
             margin: 0; padding: 0; 
             width: 100%; height: 100%; 
             background: #000; overflow: hidden; 
-            overscroll-behavior: none; 
-            -webkit-overflow-scrolling: touch;
+            font-family: system-ui, -apple-system, sans-serif;
+            color: #fff;
         }
         #game { width: 100%; height: 100%; }
+        
+        /* On-screen diagnostic banner if something fails */
+        #debug-log {
+            display: none;
+            position: absolute;
+            top: 20px; left: 20px; right: 20px;
+            background: #b91c1c;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            z-index: 999999;
+            white-space: pre-wrap;
+            word-break: break-all;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
     </style>
 </head>
 <body>
+    <div id="debug-log"></div>
     <div id="game"></div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        window.EJS_player = '#game';
-        window.EJS_core = urlParams.get('core'); 
-        
-        // CRITICAL FIX: Convert the relative ROM path to an absolute path.
-        // This prevents the emulator from searching for the ROM on its CDN servers.
-        const relativeRom = urlParams.get('rom');
-        window.EJS_gameUrl = new URL(relativeRom, window.location.href).href;
-        
-        window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+        function showError(msg) {
+            const el = document.getElementById('debug-log');
+            el.style.display = 'block';
+            el.textContent = msg;
+        }
+
+        window.onerror = function(msg, url, line) {
+            showError(`Runtime Error:\n${msg}\nLine: ${line}\nSource: ${url}`);
+        };
+
+        async function init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const core = urlParams.get('core');
+            const relativeRom = urlParams.get('rom');
+
+            if (!relativeRom) {
+                showError("Configuration Error: No ROM path was specified in URL parameters.");
+                return;
+            }
+
+            // Calculate absolute URL
+            const resolvedRomUrl = new URL(relativeRom, window.location.href).href;
+
+            try {
+                // 1. Diagnostic test: fetch the ROM directly
+                const res = await fetch(resolvedRomUrl);
+
+                if (!res.ok) {
+                    showError(`[HTTP ${res.status} ${res.statusText}] ROM File Not Found!\n\nTried to fetch:\n${resolvedRomUrl}\n\nPlease check:\n- Is the file name or extension case-sensitive on GitHub? (.nes vs .NES)\n- Was the ROM committed to Git?`);
+                    return;
+                }
+
+                // 2. Validate payload is not an HTML 404 page or Git LFS pointer
+                const blob = await res.blob();
+                if (blob.size < 300) {
+                    const sample = await blob.text();
+                    if (sample.includes("<!DOCTYPE") || sample.includes("<html")) {
+                        showError(`Error: The server returned an HTML error page instead of a game ROM.\n\nFailed URL:\n${resolvedRomUrl}`);
+                        return;
+                    }
+                    if (sample.includes("version https://git-lfs")) {
+                        showError(`Error: The ROM is a Git LFS pointer text file, not the game binary.\nDisable Git LFS for ROMs or push the actual binaries.`);
+                        return;
+                    }
+                }
+
+                // 3. Hand off the binary directly as a local Blob URL
+                window.EJS_player = '#game';
+                window.EJS_core = core;
+                window.EJS_gameUrl = URL.createObjectURL(blob);
+                window.EJS_gameName = relativeRom.split('/').pop().split('.')[0];
+                window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+                window.EJS_startOnLoaded = true;
+
+                // 4. Mount the emulator engine
+                const script = document.createElement('script');
+                script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
+                document.body.appendChild(script);
+
+            } catch (err) {
+                showError(`Network/CORS Error fetching ROM:\n${err.message}\n\nTried to fetch:\n${resolvedRomUrl}`);
+            }
+        }
+
+        init();
     </script>
-    
-    <!-- Load EmulatorJS normally so it catches the window.onload event -->
-    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 </body>
 </html>
