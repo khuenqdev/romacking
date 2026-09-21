@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Emulator</title>
+    <title>Romacking Emulator</title>
     <style>
         body, html { 
             margin: 0; padding: 0; 
@@ -14,7 +14,6 @@
         }
         #game { width: 100%; height: 100%; }
         
-        /* On-screen diagnostic banner if something fails */
         #debug-log {
             display: none;
             position: absolute;
@@ -28,15 +27,21 @@
             z-index: 999999;
             white-space: pre-wrap;
             word-break: break-all;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
         }
     </style>
+    <!-- Eruda Mobile DevTools for live debugging on iOS -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
 </head>
 <body>
     <div id="debug-log"></div>
     <div id="game"></div>
 
     <script>
+        // Only load the mobile console icon on iOS devices
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            eruda.init();
+        }
+
         function showError(msg) {
             const el = document.getElementById('debug-log');
             el.style.display = 'block';
@@ -47,57 +52,68 @@
             showError(`Runtime Error:\n${msg}\nLine: ${line}\nSource: ${url}`);
         };
 
+        // Resume AudioContext on first iOS user touch
+        const unlockAudio = () => {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                const ctx = new AudioCtx();
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+            }
+        };
+        window.addEventListener('touchstart', unlockAudio, { once: true });
+        window.addEventListener('click', unlockAudio, { once: true });
+
         async function init() {
             const urlParams = new URLSearchParams(window.location.search);
             const core = urlParams.get('core');
             const relativeRom = urlParams.get('rom');
 
             if (!relativeRom) {
-                showError("Configuration Error: No ROM path was specified in URL parameters.");
+                showError("Configuration Error: No ROM path specified in URL parameters.");
                 return;
             }
 
-            // Calculate absolute URL
+            // Calculate absolute HTTPS URL
             const resolvedRomUrl = new URL(relativeRom, window.location.href).href;
 
             try {
-                // 1. Diagnostic test: fetch the ROM directly
+                // 1. Verify ROM is reachable
                 const res = await fetch(resolvedRomUrl);
-
                 if (!res.ok) {
-                    showError(`[HTTP ${res.status} ${res.statusText}] ROM File Not Found!\n\nTried to fetch:\n${resolvedRomUrl}\n\nPlease check:\n- Is the file name or extension case-sensitive on GitHub? (.nes vs .NES)\n- Was the ROM committed to Git?`);
+                    showError(`[HTTP ${res.status}] Failed to fetch ROM from:\n${resolvedRomUrl}`);
                     return;
                 }
 
-                // 2. Validate payload is not an HTML 404 page or Git LFS pointer
+                // 2. Verify payload is not an HTML 404 page
                 const blob = await res.blob();
                 if (blob.size < 300) {
                     const sample = await blob.text();
                     if (sample.includes("<!DOCTYPE") || sample.includes("<html")) {
-                        showError(`Error: The server returned an HTML error page instead of a game ROM.\n\nFailed URL:\n${resolvedRomUrl}`);
-                        return;
-                    }
-                    if (sample.includes("version https://git-lfs")) {
-                        showError(`Error: The ROM is a Git LFS pointer text file, not the game binary.\nDisable Git LFS for ROMs or push the actual binaries.`);
+                        showError(`Error: Server returned an HTML 404 page instead of a ROM.\nURL: ${resolvedRomUrl}`);
                         return;
                     }
                 }
 
-                // 3. Hand off the binary directly as a local Blob URL
+                // 3. Configure EmulatorJS
                 window.EJS_player = '#game';
                 window.EJS_core = core;
-                window.EJS_gameUrl = URL.createObjectURL(blob);
+                
+                // FIX: Pass the real HTTPS URL directly so Web Workers on iOS can fetch it
+                window.EJS_gameUrl = resolvedRomUrl;
+                
                 window.EJS_gameName = relativeRom.split('/').pop().split('.')[0];
                 window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
                 window.EJS_startOnLoaded = true;
 
-                // 4. Mount the emulator engine
+                // 4. Mount loader
                 const script = document.createElement('script');
                 script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
                 document.body.appendChild(script);
 
             } catch (err) {
-                showError(`Network/CORS Error fetching ROM:\n${err.message}\n\nTried to fetch:\n${resolvedRomUrl}`);
+                showError(`Network/CORS Error:\n${err.message}\n\nTarget: ${resolvedRomUrl}`);
             }
         }
 
