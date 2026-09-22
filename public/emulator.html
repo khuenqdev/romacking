@@ -14,11 +14,17 @@
         }
         #game { width: 100%; height: 100%; }
     </style>
+    <!-- Eruda Mobile DevTools for iOS monitoring -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
 </head>
 <body>
     <div id="game"></div>
 
     <script>
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            eruda.init();
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const core = urlParams.get('core');
         
@@ -34,19 +40,67 @@
         // UI & Theme settings
         window.EJS_color = '#9333ea';
         window.EJS_backgroundColor = '#111827';
-        
-        // Immediately start the game on load (bypasses Start/Play screen)
         window.EJS_startOnLoaded = true;
         
-        // Initialize default options
         window.EJS_defaultOptions = {};
-
-        // Apply "CRT Geom" as default shader for NES games
         // if (core === 'nes') {
-        //     window.EJS_defaultOptions['shader'] = 'crt-lottes';
+        //     window.EJS_defaultOptions['shader'] = 'crt-geom.glslp';
         // }
+
+        // ====================================================================
+        // FIX: FORCE ROM TO LOAD LAST (AFTER CORE SCRIPTS ARE READY)
+        // ====================================================================
+
+        // Helper function that waits until the emulator engine is active in the DOM
+        function waitForCoreReady() {
+            return new Promise((resolve) => {
+                const check = () => {
+                    const coreReady = document.querySelector('script[src*="emulator.js"]') || 
+                                      document.querySelector('script[src*="cores"]') ||
+                                      window.EJS_emulator;
+                    if (coreReady) {
+                        // Core is injected! Wait an extra 350ms for WASM compilation & canvas mounting
+                        setTimeout(resolve, 350);
+                    } else {
+                        setTimeout(check, 50);
+                    }
+                };
+                // Fallback safety timeout (max 3 seconds)
+                setTimeout(resolve, 3000);
+                check();
+            });
+        }
+
+        // 1. Intercept fetch() (Used by modern EmulatorJS)
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const url = args[0] ? args[0].toString() : '';
+            // If the emulator is requesting the ROM file:
+            if (url.match(/\.(nes|gb|gbc|gba)($|\?)/i)) {
+                await waitForCoreReady();
+            }
+            return originalFetch.apply(this, args);
+        };
+
+        // 2. Intercept XMLHttpRequest (Used by some Emscripten core file-loaders)
+        const originalOpen = XMLHttpRequest.prototype.open;
+        const originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            this._url = url ? url.toString() : '';
+            return originalOpen.call(this, method, url, ...rest);
+        };
+        XMLHttpRequest.prototype.send = function(...args) {
+            if (this._url && this._url.match(/\.(nes|gb|gbc|gba)($|\?)/i)) {
+                waitForCoreReady().then(() => {
+                    originalSend.apply(this, args);
+                });
+                return;
+            }
+            return originalSend.apply(this, args);
+        };
     </script>
     
+    <!-- Load EmulatorJS after interceptor is mounted -->
     <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 </body>
 </html>
