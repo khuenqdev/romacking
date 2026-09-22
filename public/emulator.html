@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Emulator</title>
+    <title>Romacking Emulator</title>
     <style>
         body, html { 
             margin: 0; padding: 0; 
@@ -20,40 +20,33 @@
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
+        const core = urlParams.get('core');
         
         window.EJS_player = '#game';
-        window.EJS_core = urlParams.get('core'); 
+        window.EJS_core = core; 
         
+        // Resolve absolute URL for the ROM
         const relativeRom = urlParams.get('rom');
         window.EJS_gameUrl = new URL(relativeRom, window.location.href).href;
         
         window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
         
-        // ---------------------------------------------------
-        // OFFICIAL EMULATORJS UI OPTIONS
-        // https://emulatorjs.org/docs/options#ui-options
-        // ---------------------------------------------------
+        // UI & Theme settings
+        window.EJS_color = '#9333ea';
+        window.EJS_backgroundColor = '#111827';
         
-        // Changes the accent color of menus, active states, and touch controls 
-        // to match your Tailwind Next.js theme (Purple-600)
-        window.EJS_color = '#9333ea'; 
+        // Immediately start the game on load (bypasses Start/Play screen)
+        window.EJS_startOnLoaded = true;
         
-        // Sets the loading and start screen background color 
-        // to match your app's dark background (Gray-900)
-        window.EJS_backgroundColor = '#111827'; 
-        
-        // Centers the big red "Play" button vertically and horizontally
-        window.EJS_alignStartButton = 'center'; 
-        
-        // (Optional) Cleans up the toolbar menu by hiding settings you might not want on a web app
-        window.EJS_hideSettings = ['shader', 'fps', 'netplay']; 
-        
-        // (Optional) Forces the start screen to wait for the user to explicitly tap, 
-        // which prevents iOS WebAudio API crashes
-        window.EJS_startOnLoaded = false;
+        // Initialize default options
+        window.EJS_defaultOptions = {};
+
+        // Apply "CRT Geom" as default shader for NES games
+        // if (core === 'nes') {
+        //     window.EJS_defaultOptions['shader'] = 'crt-lottes';
+        // }
     </script>
     
-    <!-- Load EmulatorJS normally so it catches the window.onload event -->
     <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 </body>
 </html>

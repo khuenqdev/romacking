@@ -1,14 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+export type LocalizedString = {
+    en?: string;
+    vi?: string;
+};
+
+export type GameMetadata = {
+    name?: LocalizedString;
+    description?: LocalizedString;
+};
 
 export type Game = {
     id: string;
     title: string;
+    metadata: GameMetadata | null;
     system: string;
     romUrl: string;
     coverUrl: string | null;
+    fileName: string;
 };
 
 const SYSTEMS = ['nes', 'gb', 'gbc', 'gba'];
@@ -29,35 +39,50 @@ export function getGames(): Game[] {
             files.forEach((file) => {
                 const ext = path.extname(file).toLowerCase();
 
-                // If it's a ROM file
                 if (ROM_EXTS.includes(ext)) {
                     const baseName = path.basename(file, ext);
 
-                    // Format title (e.g., "super_mario-bros" -> "Super Mario Bros")
+                    // Fallback title derived from filename
                     const title = baseName
                         .replace(/[-_]/g, ' ')
                         .replace(/\b\w/g, (c) => c.toUpperCase());
 
-                    // Look for matching cover art
+                    // 1. Find matching cover art
                     let coverUrl = null;
-                    const matchingImg = files.find(f => {
+                    const matchingImg = files.find((f) => {
                         const fBase = path.basename(f, path.extname(f));
                         const fExt = path.extname(f).toLowerCase();
-                        return fBase === baseName && IMG_EXTS.includes(fExt);
+                        return fBase.toLowerCase() === baseName.toLowerCase() && IMG_EXTS.includes(fExt);
                     });
 
                     if (matchingImg) {
-                        // FIX: Removed leading slash so it becomes a relative path
                         coverUrl = `roms/${system}/${matchingImg}`;
+                    }
+
+                    // 2. Find matching metadata JSON file
+                    let metadata: GameMetadata | null = null;
+                    const matchingJson = files.find((f) => {
+                        const fBase = path.basename(f, path.extname(f));
+                        return fBase.toLowerCase() === baseName.toLowerCase() && path.extname(f).toLowerCase() === '.json';
+                    });
+
+                    if (matchingJson) {
+                        try {
+                            const jsonContent = fs.readFileSync(path.join(systemDir, matchingJson), 'utf-8');
+                            metadata = JSON.parse(jsonContent);
+                        } catch (err) {
+                            console.error(`Failed to parse metadata for ${file}:`, err);
+                        }
                     }
 
                     games.push({
                         id: `${system}-${baseName}`,
                         title,
+                        metadata,
                         system,
-                        // FIX: Removed leading slash so it becomes a relative path
                         romUrl: `roms/${system}/${file}`,
                         coverUrl,
+                        fileName: file,
                     });
                 }
             });
